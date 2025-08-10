@@ -1,6 +1,6 @@
-# MarketTracker — отслеживание цен на Wildberries
+# MarketTracker — отслеживание цен на Wildberries и Ozon
 
-**MarketTracker** — сервис, предназначенный для автоматического мониторинга цен товаров на [Wildberries](https://www.wildberries.ru/) с уведомлениями в Telegram.
+**MarketTracker** — сервис, предназначенный для автоматического мониторинга цен товаров на [Wildberries](https://www.wildberries.ru/) и [Ozon](https://www.ozon.ru/) с уведомлениями в Telegram.
 
 ---
 
@@ -26,7 +26,7 @@
 ## Как это работает
 
 1. Пользователь отправляет артикул товара боту.
-2. Сервис получает данные о товаре с WB.
+2. Сервис получает данные о товаре с WB или Ozon.
 3. Цена сохраняется в БД.
 4. Раз в час запускается задача по обновлению цен.
 5. Если цена изменилась — отправляется уведомление в Telegram.
@@ -50,6 +50,8 @@ cd MarketTracker
   db_url: <YOUR_DATABASE_URL>
   db_username: <YOUR_DATABASE_USERNAME>
   db_password: <YOUR_DATABASE_PASSWORD>
+  SELENIUM_URL= <SELENIUM_URL>
+  SELENIUM_PROXYIP= <SELENIUM_PROXYIP>
 ```
 
 ### 3. Собери и запусти с Docker
