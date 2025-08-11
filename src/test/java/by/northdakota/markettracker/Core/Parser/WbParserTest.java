@@ -1,6 +1,6 @@
 package by.northdakota.markettracker.Core.Parser;
 
-import by.northdakota.markettracker.Core.Parser.WbParser;
+import by.northdakota.markettracker.Core.Parser.WB.WbParser;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package by.northdakota.markettracker.Core.Parser;
+package by.northdakota.markettracker.Core.Parser.WB;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

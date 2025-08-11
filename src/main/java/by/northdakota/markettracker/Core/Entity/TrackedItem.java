@@ -30,6 +30,11 @@ public class TrackedItem {
     private BigDecimal currentPrice;
     @Column(nullable = false)
     private BigDecimal basicPrice;
+    @Column
+    private BigDecimal salePrice;
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Marketplace marketplace;
     @Column(nullable = false)
     private Long chatId;
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL,orphanRemoval = true)

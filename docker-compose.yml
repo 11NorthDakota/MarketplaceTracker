@@ -8,26 +8,33 @@ services:
     ports:
       - '8080:8080'
     environment:
-      - db_url=jdbc:postgresql://market_db:5432/markettrack
-      - db_username=postgres
-      - db_password=postgres
-      - TG_NAME= *
-      - TG_TOKEN= *
+      - DB_URL=${DB_URL}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - TG_NAME=${TG_NAME}
+      - TG_TOKEN=${TG_TOKEN}
+      - SELENIUM_URL=${SELENIUM_URL}
+      - SELENIUM_PROXYIP=${SELENIUM_PROXYIP}
     depends_on:
-      - market_db:
-          condition: service_healthy
+      - market_db
 
   market_db:
     image: postgres
     container_name: market_db
     environment:
-      - POSTGRES_DB=markettrack
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - '5432:5432'
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/market/data
+
+  chrome:
+    image: selenium/standalone-chrome:latest
+    shm_size: 2g
+    ports:
+        - "4444:4444"
 
 volumes:
   db_data:

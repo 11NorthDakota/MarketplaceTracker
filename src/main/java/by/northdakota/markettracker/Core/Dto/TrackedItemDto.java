@@ -1,5 +1,6 @@
 package by.northdakota.markettracker.Core.Dto;
 
+import by.northdakota.markettracker.Core.Entity.Marketplace;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,4 +17,6 @@ public class TrackedItemDto {
     private String title;
     private BigDecimal currentPrice;
     private BigDecimal basicPrice;
+    private BigDecimal salePrice;
+    private Marketplace marketplace;
 }

@@ -1,5 +1,5 @@
 package by.northdakota.markettracker.Core.Entity;
 
-public enum BrandShop {
+public enum Marketplace {
     WB,OZON
 }

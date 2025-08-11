@@ -1,6 +1,7 @@
 package by.northdakota.markettracker.Core.Service;
 
 import by.northdakota.markettracker.Core.Dto.TrackedItemDto;
+import by.northdakota.markettracker.Core.Entity.Marketplace;
 import by.northdakota.markettracker.Core.Entity.Notification;
 import by.northdakota.markettracker.Core.Entity.PriceHistory;
 import by.northdakota.markettracker.Core.Entity.TrackedItem;
@@ -15,24 +16,22 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.yaml.snakeyaml.error.Mark;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
-public class TrackerService {
+public class WbTrackerService implements TrackerService{
 
-    private static final Logger logger = LoggerFactory.getLogger(TrackerService.class);
+    private static final Logger logger = LoggerFactory.getLogger(WbTrackerService.class);
 
     private final WbDataProvider wbDataProvider;
     private final WbParser wbParser;
@@ -43,7 +42,7 @@ public class TrackerService {
     @Transactional
     public Optional<TrackedItemDto> startTracking(String article, Long chatId) throws IOException {
 
-        if(trackedItemRepository.existsByArticleAndChatId(article, chatId)) {
+        if(trackedItemRepository.existsByArticleAndChatIdAndMarketplace(article, chatId,Marketplace.WB)) {
             eventPublisher.publishEvent(new Notification(chatId,"Товар уже отслеживается!"));
             return Optional.empty();
         }
@@ -51,7 +50,7 @@ public class TrackerService {
         JSONObject object = wbDataProvider.getProductData(article);
         JSONArray products = object.getJSONArray("products");
         if (products == null || products.toList().isEmpty()) {
-            eventPublisher.publishEvent(new Notification(chatId, "Товар с таким артиклем не найден!"));
+            eventPublisher.publishEvent(new Notification(chatId, "Товар с таким артикулом не найден!"));
             return Optional.empty();
         }
         Map<String, Object> priceList = wbParser.getPriceList(object);
@@ -63,7 +62,9 @@ public class TrackerService {
         TrackedItem trackedItem = TrackedItem.builder()
                 .currentPrice(currentPrice)
                 .basicPrice(basicPrice)
+                .salePrice(null)
                 .title(productName)
+                .marketplace(Marketplace.WB)
                 .article(article)
                 .chatId(chatId)
                 .priceHistory(new ArrayList<>())
@@ -72,7 +73,6 @@ public class TrackerService {
         PriceHistory history = new PriceHistory();
         history.setPrice(currentPrice);
         history.setItem(trackedItem);
-
         history.setTimestamp(LocalDateTime.now());
         List<PriceHistory> priceHistory =  trackedItem.getPriceHistory();
         priceHistory.add(history);
@@ -86,7 +86,11 @@ public class TrackerService {
                 article,
                 productName,
                 currentPrice,
-                basicPrice);
+                basicPrice,
+                null,
+                Marketplace.WB
+
+        );
         logger.info("Tracked Item: {}", trackedItem);
         logger.info("Price History : {}", history);
         return Optional.of(dto);
@@ -94,12 +98,18 @@ public class TrackerService {
 
     @Transactional
     public void stopTracking(String article,Long chatId) throws IOException {
-        trackedItemRepository.deleteByArticleAndChatId(article,chatId);
-        logger.info("Item with article {} and chatId {} is no longer tracked", article,chatId);
+        trackedItemRepository.deleteByArticleAndChatIdAndMarketplace(article,chatId,Marketplace.WB);
+        logger.info("Товар с артикулом {} и chatId {} больше не отслеживается", article,chatId);
     }
 
     public List<TrackedItemDto> getUserTrackedItem(Long chatId) {
-        List<TrackedItem> trackedItems = trackedItemRepository.findAllByChatId(chatId);
+        Optional<List<TrackedItem>> trackedItemsOpt = trackedItemRepository
+                .findAllByChatIdAndMarketplace(chatId,Marketplace.WB);
+        if(trackedItemsOpt.isEmpty()){
+            eventPublisher.publishEvent(new Notification(chatId,"Товары на WB не отслеживаются!"));
+            return Collections.emptyList();
+        }
+        List<TrackedItem> trackedItems = trackedItemsOpt.get();
         List<TrackedItemDto> trackedItemDtos = new ArrayList<>();
         for(TrackedItem item : trackedItems) {
             TrackedItemDto dto = new TrackedItemDto();
@@ -107,14 +117,25 @@ public class TrackerService {
             dto.setTitle(item.getTitle());
             dto.setBasicPrice(item.getBasicPrice());
             dto.setCurrentPrice(item.getCurrentPrice());
+            dto.setMarketplace(item.getMarketplace());
+            dto.setSalePrice(item.getSalePrice());
             trackedItemDtos.add(dto);
         }
         return trackedItemDtos;
     }
 
     @Scheduled(fixedDelayString = "PT30M",initialDelayString = "PT30M")
+    @Async
     public void checkPrice() throws IOException {
-        List<TrackedItem> itemList = trackedItemRepository.findAll();
+        Optional<List<TrackedItem>> itemListOpt = trackedItemRepository.findAllByMarketplace(Marketplace.WB);
+
+        if(itemListOpt.isEmpty()){
+            logger.info("Товары на WB не отслеживаются!");
+            logger.info("Проверка цен завершена");
+            return;
+        }
+
+        List<TrackedItem> itemList = itemListOpt.get();
 
         for(TrackedItem item : itemList){
             JSONObject data = wbDataProvider.getProductData(item.getArticle());
@@ -135,8 +156,10 @@ public class TrackerService {
 
                 logger.info("Price History saved: {}", history);
 
-                String message = String.format("У товара %s (арт. %s)\n💰 Изменилась цена: %s → %s",
-                item.getTitle(), item.getArticle(),
+                String message = String.format("У товара %s (арт. %s) с маркетплейса %s\n💰 Изменилась цена: %s → %s",
+                        item.getTitle(),
+                        Marketplace.WB,
+                        item.getArticle(),
                         oldPrice.divide(BigDecimal.valueOf(100)).doubleValue() ,
                         newPrice.divide(BigDecimal.valueOf(100)).doubleValue());
 
