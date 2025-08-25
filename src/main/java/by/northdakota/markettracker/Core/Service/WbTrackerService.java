@@ -10,7 +10,6 @@ import by.northdakota.markettracker.Core.Parser.WB.WbParser;
 import by.northdakota.markettracker.Core.Repository.PriceHistoryRepository;
 import by.northdakota.markettracker.Core.Repository.TrackedItemRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -20,7 +19,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.yaml.snakeyaml.error.Mark;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -97,7 +95,7 @@ public class WbTrackerService implements TrackerService{
     }
 
     @Transactional
-    public void stopTracking(String article,Long chatId) throws IOException {
+    public void stopTracking(String article,Long chatId) {
         trackedItemRepository.deleteByArticleAndChatIdAndMarketplace(article,chatId,Marketplace.WB);
         logger.info("Товар с артикулом {} и chatId {} больше не отслеживается", article,chatId);
     }
@@ -110,7 +108,7 @@ public class WbTrackerService implements TrackerService{
             return Collections.emptyList();
         }
         List<TrackedItem> trackedItems = trackedItemsOpt.get();
-        List<TrackedItemDto> trackedItemDtos = new ArrayList<>();
+        List<TrackedItemDto> trackedItemsDto = new ArrayList<>();
         for(TrackedItem item : trackedItems) {
             TrackedItemDto dto = new TrackedItemDto();
             dto.setArticle(item.getArticle());
@@ -119,9 +117,9 @@ public class WbTrackerService implements TrackerService{
             dto.setCurrentPrice(item.getCurrentPrice());
             dto.setMarketplace(item.getMarketplace());
             dto.setSalePrice(item.getSalePrice());
-            trackedItemDtos.add(dto);
+            trackedItemsDto.add(dto);
         }
-        return trackedItemDtos;
+        return trackedItemsDto;
     }
 
     @Scheduled(fixedDelayString = "PT30M",initialDelayString = "PT30M")
